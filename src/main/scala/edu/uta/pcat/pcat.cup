@@ -106,13 +106,33 @@ non terminal             lvalue;
 non terminal             write_expr;
 non terminal             write_params;
 non terminal             write_params1;
+non terminal             fp_section;
+non terminal             fp_section1;
+non terminal             formal_params;
+non terminal             formal_params1;
+non terminal             component;
+non terminal             type;
+non terminal             component_lst;
+non terminal             procedure_decl;
+non terminal             procedure_decls;
+non terminal             procedure_decls1;
+non terminal             type_decl;
+non terminal             type_decls;
+non terminal             type_decls1;
+non terminal             var_decl;
+non terminal             var_decl1;
+non terminal             var_decls;
+non terminal             var_decls_lst;
+non terminal             declaration;
+non terminal             typename;
+non terminal             declaration_lst;
 
 precedence nonassoc ELSE;
 precedence nonassoc ELSIF;
 precedence right  OR;
 precedence right  AND;
 precedence nonassoc NOT;
-precedence left   EQ, LT, GT, LEQ, GEQ, NEQ;
+precedence left   EQ, LT, GT, LEQ, GEQ, NEQ, LPAREN;
 precedence left   PLUS, MINUS;
 precedence left   TIMES, SLASH, DIV, MOD;
 
@@ -120,19 +140,92 @@ start with program;
 
 program         ::= PROGRAM IS body:b SEMI            {: PCAT.setAST(new ProcDecl("main","NoType",nil,b)); :}
                 ;
-body            ::= BEGIN statement_lst:sl END        {: RESULT = new Body(nil,sl); :}
+body            ::= declaration_lst BEGIN statement_lst:sl END
+                | BEGIN statement_lst:sl END        {: RESULT = new Body(nil,sl); :}
                 ;
-statement_lst   ::= statement:s                       {: RESULT = add(s,nil); :}
+statement_lst   ::= statement:s                       {: RESULT = add(s,nil); :}    /* New Symbol*/
                 |   statement_lst:sl statement:s      {: RESULT = append(sl,s); :}
+                |   statement_lst COMMA lvalue
+                |   COMMA lvalue
                 ;
-statement       ::=  RETURN expression:e SEMI         {: RESULT = new ReturnValueSt(e); :}
+declaration_lst ::= declaration_lst declaration   /* New Symbol*/
+                |   declaration
+                ;
+declaration     ::= VAR var_decls
+                | TYPE type_decls
+                | PROCEDURE procedure_decls
+                ;
+var_decls       ::= var_decl var_decls_lst  
+                ;
+var_decls_lst   ::= var_decls_lst var_decl   /* New Symbol*/
+                ;
+var_decl        ::= ID var_decl1 ASGN expression SEMI
+                |   ID var_decl1 COLON typename ASGN expression SEMI
+                ;
+var_decl1       ::= var_decl1 COMMA ID /* New Symbol*/
+                |   COMMA ID
+                ;
+type_decls      ::= type_decl type_decls1
+                ;
+type_decls1     ::= type_decls1 AND type_decl  /* New Symbol*/
+                |   AND type_decl
+                ;
+type_decl       ::= typename IS type SEMI
+                ;
+procedure_decls ::= procedure_decl procedure_decls1
+                ;
+procedure_decls1::= procedure_decls1 AND procedure_decl  /* New Symbol*/
+                |   AND procedure_decl
+                ;
+procedure_decl  ::= ID formal_params IS body SEMI
+                |   ID formal_params COLON typename IS body SEMI
+                ;
+typename        ::= ID
+                ;
+type            ::= ARRAY OF ID
+                |   RECORD component component_lst END
+                ;
+component_lst   ::= component_lst component   /* New Symbol*/
+                |   component
+                ;
+component       ::= ID COLON typename SEMI
+                ;
+formal_params   ::= LPAREN fp_section formal_params1 RPAREN
+                | LPAREN RPAREN
+                ;
+formal_params1  ::= formal_params1 SEMI fp_section  /* New Symbol*/
+                |   SEMI fp_section
+                ;
+fp_section      ::= ID fp_section1 COLON typename
+                ;
+fp_section1     ::= fp_section1 COMMA ID    /* New Symbol*/
+                |   COMMA ID
+                ;
+statement       ::=  lvalue ASGN expression SEMI
+                |    ID actual_params SEMI
+                |    READ LPAREN lvalue RPAREN SEMI
+                |    READ LPAREN lvalue statement_lst RPAREN SEMI
+                |    WRITE write_params SEMI
+                |    IF expression THEN END SEMI
+                |    IF expression THEN statement_lst
+                      ELSIF expression THEN statement_lst
+                      ELSE statement_lst END SEMI 
+                |    WHILE expression DO statement_lst END SEMI
+                |    WHILE expression DO END SEMI
+                |    LOOP statement_lst END SEMI
+                |    LOOP END SEMI
+                |    FOR ID ASGN expression TO expression DO statement_lst END
+                |    FOR ID ASGN expression TO expression BY expression 
+                      DO statement_lst END SEMI
+                |    EXIT SEMI
+                |    RETURN expression:e SEMI         {: RESULT = new ReturnValueSt(e); :}
                 |    RETURN SEMI                      {: RESULT = new ReturnSt(); :}
                 ;
 write_params    ::=  LPAREN write_expr RPAREN
                 |    LPAREN write_expr write_params1 RPAREN
                 ;
-write_params1   ::=  write_params1 COMMA write_expr
-                |    write_expr
+write_params1   ::=  write_params1 COMMA write_expr   /* New Symbol*/
+                |    COMMA write_expr
                 ;
 write_expr      ::=  STRING_LITERAL
                 |    expression
@@ -159,31 +252,27 @@ expression      ::=  number
                 |    ID actual_params
                 |    ID record_inits
                 |    ID array_inits
-                |    ID
                 ;
-lvalue          ::=  lvalue LSQBRA expression RSQBRA COMMA ID
+lvalue          ::=  ID
+                |    lvalue LSQBRA expression RSQBRA 
                 |    lvalue DOT ID
                 ;
-actual_params   ::=  LPAREN expression RPAREN
-                |    LPAREN expression actual_params1 RPAREN
+actual_params   ::=  LPAREN expression actual_params1 RPAREN
                 |    LPAREN RPAREN
                 ;
-actual_params1  ::=  actual_params1 COMMA expression
+actual_params1  ::=  actual_params1 COMMA expression    /* New Symbol*/
                 |    COMMA expression
                 ;
-
 record_inits    ::=  LCUBRA ID ASGN expression record_inits1 RCUBRA
-                |    LCUBRA ID ASGN expression RCUBRA
                 ;
-record_inits1   ::=  record_inits1 COMMA SEMI ID ASGN expression
+record_inits1   ::=  record_inits1 SEMI ID ASGN expression    /* New Symbol*/
                 |    SEMI ID ASGN expression
                 ;
 array_inits     ::=  LCUBRA RCUBRA
-                |    LCUBRA array_init RCUBRA
-                |    LCUBRA array_init COMMA array_inits1 RCUBRA
+                |    LCUBRA array_init array_inits1 RCUBRA
                 ;
-array_inits1    ::=  array_init
-                |    array_inits1 COMMA array_init
+array_inits1    ::=  array_inits1 COMMA array_init   /* New Symbol*/
+                |    COMMA array_init
                 ;
 array_init      ::= expression
                 | expression OF expression

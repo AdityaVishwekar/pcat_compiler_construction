@@ -1,5 +1,5 @@
-# pcat_compiler_construction
- The project is to construct a compiler for a small programming language, called PCAT. It will involve: lexical analysis, parsing, semantic analysis (type-checking), and code generation for  MIPS architecture.
+﻿# pcat_compiler_construction
+ The project is to construct a compiler for a small programming language, called PCAT. It will involve: lexical analysis, parsing, semantic analysis (type-checking), and code generation for MIPS architecture.
 Domain
 A major part of this project is to implement a full compiler for a subset of Pascal, called PCAT, designed by Andrew Tolmach at Portland State University. The paper that describes the language can be retrieved from pcat04.pdf.
 
