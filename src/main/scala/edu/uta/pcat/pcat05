@@ -121,11 +121,13 @@ non terminal             type_decl;
 non terminal             type_decls;
 non terminal             type_declsRec;
 non terminal             var_decl;
+non terminal             var_declRec;
 non terminal             var_decls;
 non terminal             var_declsRec;
 non terminal             declaration;
 non terminal             typename;
 non terminal             declaration_lst;
+non terminal             var_type_dec;
 non terminal             elsif_lst;
 non terminal            var_decl_type;
 non terminal            procedure_decl_type;
@@ -149,10 +151,10 @@ precedence left   LPAREN, RPAREN;
 
 start with program;
 
-program         ::= PROGRAM IS body:b SEMI      {: PCAT.setAST(new ProcDecl("main","NoType",nil,b)); :}
+program         ::= PROGRAM IS body:b SEMI      
                 ;
 body            ::= declaration_lst BEGIN statementRec END
-                |   BEGIN statementRec:sl END       {: RESULT = new Body(nil,sl); :}
+                |   BEGIN statementRec END
                 ;
 statementRec   ::= statement                    /* New Symbol*/
                 |   statementRec:sl statement:s      

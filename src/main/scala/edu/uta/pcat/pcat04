@@ -93,7 +93,7 @@ non terminal             program;
 non terminal Body        body;
 non terminal Expr        expression;
 non terminal Stmt        statement;
-non terminal List<Stmt>  statementRec;
+non terminal List<Stmt>  statement_lst;
 non terminal             number;
 non terminal             array_init;
 non terminal             array_inits;
@@ -103,7 +103,6 @@ non terminal             record_initsRec;
 non terminal             actual_params;
 non terminal             actual_paramsRec;
 non terminal             lvalue;
-non terminal             lvalueRec;
 non terminal             write_expr;
 non terminal             write_params;
 non terminal             write_paramsRec;
@@ -113,7 +112,7 @@ non terminal             formal_params;
 non terminal             formal_paramsRec;
 non terminal             component;
 non terminal             type;
-non terminal             componentRec;
+non terminal             component_lst;
 non terminal             procedure_decl;
 non terminal             procedure_decls;
 non terminal             procedure_declsRec;
@@ -121,11 +120,13 @@ non terminal             type_decl;
 non terminal             type_decls;
 non terminal             type_declsRec;
 non terminal             var_decl;
+non terminal             var_declRec;
 non terminal             var_decls;
 non terminal             var_declsRec;
 non terminal             declaration;
 non terminal             typename;
 non terminal             declaration_lst;
+non terminal             var_type_dec;
 non terminal             elsif_lst;
 non terminal            var_decl_type;
 non terminal            procedure_decl_type;
@@ -149,13 +150,15 @@ precedence left   LPAREN, RPAREN;
 
 start with program;
 
-program         ::= PROGRAM IS body:b SEMI      {: PCAT.setAST(new ProcDecl("main","NoType",nil,b)); :}
+program         ::= PROGRAM IS body:b SEMI      
                 ;
-body            ::= declaration_lst BEGIN statementRec END
-                |   BEGIN statementRec:sl END       {: RESULT = new Body(nil,sl); :}
+body            ::= declaration_lst BEGIN statement_lst END
+                |   BEGIN statement_lst END
                 ;
-statementRec   ::= statement                    /* New Symbol*/
-                |   statementRec:sl statement:s      
+statement_lst   ::= statement                    /* New Symbol*/
+                |   statement_lst:sl statement:s      
+                |   statement_lst COMMA lvalue
+                |   COMMA lvalue
                 ;
 declaration_lst ::= declaration
                 |   declaration_lst declaration   /* New Symbol*/
@@ -171,11 +174,12 @@ var_declsRec   ::= var_declsRec var_decl   /* New Symbol*/
                 |  var_decl
                 ;
 var_decl        ::= ID ASGN expression SEMI
-                |   ID fp_sectionRec ASGN expression SEMI
-                |   ID fp_sectionRec var_decl_type ASGN expression SEMI
-                |   ID var_decl_type ASGN expression SEMI
+                |   ID var_declRec var_decl_type ASGN expression SEMI
                 ;
 var_decl_type   ::= COLON typename
+                ;
+var_declRec       ::= var_declRec COMMA ID /* New Symbol*/
+                |   COMMA ID
                 ;
 type_decls      ::= type_decl type_declsRec
                 |   type_decl
@@ -200,16 +204,16 @@ typename        ::= ID
                 ;
 type            ::= ARRAY OF typename
                 |   RECORD component END
-                |   RECORD component componentRec END
+                |   RECORD component component_lst END
                 ;
-componentRec   ::= component
-                |   componentRec component   /* New Symbol*/
+component_lst   ::= component
+                |   component_lst component   /* New Symbol*/
                 ;
 component       ::= ID COLON typename SEMI
                 ;
 formal_params   ::= LPAREN fp_section RPAREN
                 |   LPAREN fp_section formal_paramsRec RPAREN
-                |   LPAREN RPAREN
+                | LPAREN RPAREN
                 ;
 formal_paramsRec  ::= formal_paramsRec SEMI fp_section  /* New Symbol*/
                 |   SEMI fp_section
@@ -222,41 +226,36 @@ fp_sectionRec     ::= fp_sectionRec COMMA ID    /* New Symbol*/
                 ;
 statement       ::=  lvalue ASGN expression SEMI
                 |    ID actual_params SEMI
-                |    READ LPAREN lvalue lvalueRec RPAREN SEMI
+                |    READ LPAREN lvalue statement_lst RPAREN SEMI
                 |    READ LPAREN lvalue RPAREN SEMI
                 |    WRITE write_params SEMI
-                |    IF expression THEN statementRec
+                |    IF expression THEN statement_lst
                       END SEMI  
-                |    IF expression THEN statementRec
+                |    IF expression THEN statement_lst
                       elsif_lst
-                      statement_else_type END SEMI 
-                |    IF expression THEN statementRec
-                      statement_else_type END SEMI 
-                |    WHILE expression DO statementRec END SEMI
+                      statement_else_type END SEMI  
+                |    WHILE expression DO statement_lst END SEMI
                 |    WHILE expression DO END SEMI
-                |    LOOP statementRec END SEMI
+                |    LOOP statement_lst END SEMI
                 |    LOOP END SEMI
                 |    FOR ID ASGN expression TO expression for_decl_type
-                      DO END SEMI
+                      DO END
                 |    FOR ID ASGN expression TO expression
-                      DO statementRec END SEMI
+                      DO END
                 |    FOR ID ASGN expression TO expression for_decl_type
-                      DO statementRec END SEMI
+                      DO statement_lst END
                 |    EXIT SEMI
                 |    RETURN statement_expression_type SEMI  
                 |    RETURN SEMI                      
                 ;
-lvalueRec       ::=  lvalueRec COMMA lvalue
-                |    COMMA lvalue
-                ;
-statement_else_type ::= ELSE statementRec
+statement_else_type ::= ELSE statement_lst
                 ;
 statement_expression_type ::= expression
                 ;
 for_decl_type   ::= BY expression
                 ;
-elsif_lst       ::=  elsif_lst ELSIF expression THEN statementRec
-                |    ELSIF expression THEN statementRec
+elsif_lst       ::=  elsif_lst ELSIF expression THEN statement_lst
+                |    ELSIF expression THEN statement_lst
                 ;
 write_params    ::=  LPAREN write_expr RPAREN
                 |    LPAREN write_expr write_paramsRec RPAREN

@@ -37,7 +37,7 @@ ID=[a-zA-Z][a-zA-Z0-9_]*
 %}
 
 %%
-
+"(*"[^*]*"*)" { /* ignore comments. */ }
 "BEGIN"         { return symbol(sym.BEGIN); }
 {DIGIT}+    { return symbol(sym.INTEGER_LITERAL,new Integer(yytext())); }
 {DIGIT}+"."{DIGIT}+ { return symbol(sym.REAL_LITERAL,new Float(yytext())); }
@@ -62,7 +62,7 @@ ID=[a-zA-Z][a-zA-Z0-9_]*
 "PROCEDURE" { return symbol(sym.PROCEDURE); }
 "PROGRAM" { return symbol(sym.PROGRAM); }
 "READ" { return symbol(sym.READ); }
-"RECORD" { return symbol(sym.READ); }
+"RECORD" { return symbol(sym.RECORD); }
 "RETURN" { return symbol(sym.RETURN); }
 "THEN" { return symbol(sym.THEN); }
 "TO" { return symbol(sym.TO); }

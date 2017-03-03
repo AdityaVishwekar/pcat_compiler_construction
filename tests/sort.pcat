@@ -3,7 +3,7 @@ VAR N := 10;
 TYPE list IS ARRAY OF INTEGER;
 VAR a := list { N OF 0 };
 
-PROCEDURE quicksort ( a: list; m, n: INTEGER ) IS
+PROCEDURE quicksort ( a : list; m, n : INTEGER ) IS
   VAR i : INTEGER := 0; 
   PROCEDURE partition ( y, z: INTEGER ) : INTEGER IS
     VAR i := y;

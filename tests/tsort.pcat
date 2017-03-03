@@ -1,6 +1,4 @@
-PROGRAM IS
-
-VAR N := 9;
+PROGRAM IS VAR N := 9;
 TYPE btree IS RECORD k: INTEGER; l: btree; r: btree; END;
 
 PROCEDURE insert (t: btree; i: INTEGER) : btree IS
