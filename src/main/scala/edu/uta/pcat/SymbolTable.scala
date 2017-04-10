@@ -9,7 +9,6 @@ case class VarDec ( vartype: Type, level: Int, offset: Int ) extends EnvDecl
 case class ProcDec ( outtype: Type, params: List[(String,Type)],
                      label: String, level: Int, available_offset: Int ) extends EnvDecl
 
-
 /** A symbol table to store PCAT declarations */
 class SymbolTable {
   var symbol_table: List[List[(String,EnvDecl)]] = Nil

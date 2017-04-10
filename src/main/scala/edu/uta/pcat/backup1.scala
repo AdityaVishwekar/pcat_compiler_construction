@@ -95,11 +95,11 @@ non terminal Expr        expression;
 non terminal Stmt        statement;
 non terminal List<Stmt>  statementRec;
 non terminal             number;
-non terminal List<Expr>  array_init;
-non terminal List<Tuple2<Expr,Expr>>  array_inits;
-non terminal List<Expr>  array_initsRec;
-non terminal List<Tuple2<String,Expr>>  record_inits;
-non terminal List<Tuple2<String,Expr>>  record_initsRec;
+non terminal             array_init;
+non terminal List<Expr>  array_inits;
+non terminal             array_initsRec;
+non terminal List<Expr>  record_inits;
+non terminal             record_initsRec;
 non terminal List<Expr>  actual_params;
 non terminal List<Expr>  actual_paramsRec;
 non terminal Lvalue      lvalue;
@@ -107,8 +107,8 @@ non terminal List<Lvalue> lvalueRec;
 non terminal Expr        write_expr;
 non terminal List<Expr>  write_params;
 non terminal List<Expr>  write_paramsRec;
-non terminal List<String> fp_section;
-non terminal List<String> fp_sectionRec;
+non terminal List<Tuple2<String,String>> fp_section;
+non terminal List<Tuple2<String,String>> fp_sectionRec;
 non terminal String      formal_params;
 non terminal List<String> formal_paramsRec;
 non terminal List<Tuple2<String,String>> component;
@@ -132,8 +132,8 @@ non terminal List<Tuple2<List<String>,String>> procedure_decl_type;
 non terminal Stmt       statement_else_type;
 non terminal            statement_expression_type;
 non terminal            for_decl_type;
-non terminal List<Expr> array_inits_type;
-non terminal List<Expr> array_init_type;
+non terminal            array_inits_type;
+non terminal            array_init_type;
 
 precedence nonassoc ELSE;
 precedence nonassoc ELSIF;
@@ -221,26 +221,26 @@ case class RecordType ( components: List[(String,String)] ) extends Type
 case class AnyType () extends Type
 */
 type            ::= ARRAY OF typename:tn                          {: RESULT = new ArrayType(tn); :}
-                |   RECORD component:c END                        {: RESULT = new RecordType(c); :}
-                |   RECORD component:c componentRec:cl END        {: RESULT = new RecordType(cl); :}
+                |   RECORD component:c END                        {: RESULT = append(c,nil); :}
+                |   RECORD component:c componentRec:cl END        {: RESULT = append(c,cl); :}
                 ;
-componentRec   ::= component:c                  {: RESULT = add(c,nil); :}
-                |  componentRec:cl component:c  {: RESULT = append(cl,c); :} 
+componentRec   ::= component:c                                    {: RESULT = append(c,nil); :}
+                |  componentRec:cl component:c                    {: RESULT = append(cl,c); :}          
                 ;
-component       ::= ID:nm COLON typename:tn SEMI                 {: RESULT = append(add(nm,nil),tn); :} 
+component       ::= ID:nm COLON typename:t SEMI                   {: RESULT = append(nm,t); :}
                 ;
-formal_params   ::= LPAREN fp_section:fs RPAREN                  
-                |   LPAREN fp_section formal_paramsRec RPAREN
-                |   LPAREN RPAREN
+formal_params   ::= LPAREN fp_section:fs RPAREN                          {: RESULT = append(fs,nil); :}               
+                |   LPAREN fp_section:fs formal_paramsRec:fpl RPAREN     {: RESULT = append(fs,fpl); :}
+                |   LPAREN RPAREN                                        {: RESULT = append(nil,nil); :}
                 ;
-formal_paramsRec  ::= formal_paramsRec:fpl SEMI fp_section:fs   
-                |   SEMI fp_section:fs                           
+formal_paramsRec  ::= formal_paramsRec:fpl SEMI fp_section:fs  {: RESULT = append(fpl,fs); :}
+                |   SEMI fp_section:fs                         {: RESULT = append(nil,fs); :}
                 ;
-fp_section      ::= ID:nm COLON typename:tn                     {: RESULT = append(add(nm,nil),tn); :} 
-                |   ID:nm fp_sectionRec:fsl COLON typename:tn   {: RESULT = append(add(nm,fsl),tn); :} 
+fp_section      ::= ID:nm COLON typename:t                 {: RESULT = append(nm,t); :}
+                |   ID fp_sectionRec:fl COLON typename:t   {: RESULT = append(fl,t); :}
                 ;
-fp_sectionRec     ::= fp_sectionRec:fsl COMMA ID:nm             {: RESULT = append(fsl,nm); :}    
-                |   COMMA ID:nm                                 {: RESULT = append(nil,nm); :} 
+fp_sectionRec     ::= fp_sectionRec:fl COMMA ID:nm         {: RESULT = append(fl,nm); :}   
+                |   COMMA ID:nm                            {: RESULT = append(nil,nm); :}
                 ;
 /** Abstract syntax trees for statements
 sealed abstract class Stmt
@@ -259,16 +259,16 @@ case class SeqSt ( stmts: List[Stmt] ) extends Stmt
 */
 statement       ::=  lvalue:l ASGN expression:e SEMI              {: RESULT = new AssignSt(l,e); :}
                 |    ID:nm actual_params:ap SEMI                  {: RESULT = new CallSt(nm,ap); :}
-                |    READ LPAREN lvalue:l lvalueRec:ll RPAREN SEMI  {: RESULT = new ReadSt(add(l,ll)); :}
-                |    READ LPAREN lvalue:l RPAREN SEMI              {: RESULT = new ReadSt(add(l,nil)); :}
+                |    READ LPAREN lvalue lvalueRec:ll RPAREN SEMI  {: RESULT = new ReadSt(ll); :}
+                |    READ LPAREN lvalue RPAREN SEMI
                 |    WRITE write_params:w SEMI                    {: RESULT = new WriteSt(w); :}
                 |    IF expression:e THEN statementRec:st
                       END SEMI                                    {: RESULT = new IfSt(e,new SeqSt(st),null); :}
                 |    IF expression THEN statementRec
                       elsif_lst
-                      ELSE statementRec:st2 END SEMI                
-                |    IF expression:e THEN statementRec:st1
-                      ELSE statementRec:st2 END SEMI               {: RESULT = new IfSt(e,new SeqSt(st1),new SeqSt(st2)); :}
+                      statement_else_type END SEMI                
+                |    IF expression:e THEN statementRec:st
+                      statement_else_type:es END SEMI               {: RESULT = new IfSt(e,new SeqSt(st),es); :}
                 |    WHILE expression:e DO statementRec:st END SEMI {: RESULT = new WhileSt(e,new SeqSt(st)); :}
                 |    WHILE expression:e DO END SEMI                 {: RESULT = new WhileSt(e,null); :}
                 |    LOOP statementRec:st END SEMI                  {: RESULT = new LoopSt(new SeqSt(st)); :}
@@ -283,12 +283,12 @@ statement       ::=  lvalue:l ASGN expression:e SEMI              {: RESULT = ne
                 |    RETURN expression:e SEMI {: RESULT = new ReturnValueSt(e); :}
                 |    RETURN SEMI         {: RESULT = new ReturnSt(); :}             
                 ;
-lvalueRec       ::=  lvalueRec:ll COMMA lvalue:l       {: RESULT = append(ll,l); :}
-                |    COMMA lvalue:l                    {: RESULT = append(nil,l); :}
+lvalueRec       ::=  lvalueRec COMMA lvalue
+                |    COMMA lvalue
+                ;
+statement_else_type ::= ELSE statementRec
                 ;
 /*
-statement_else_type ::= ELSE statementRec:sl           
-                ;
 for_decl_type   ::= BY expression
                 ;
 */
@@ -303,7 +303,7 @@ write_paramsRec   ::=  write_paramsRec:wl COMMA write_expr:w        {: RESULT = 
                 |    COMMA write_expr:w                             {: RESULT = append(nil,w); :} 
                 ;
 write_expr      ::=  STRING_LITERAL:s                          {: RESULT = new StringConst(s); :}
-                |    expression:e                              {: RESULT = e; :}
+                |    expression:e                              
                 ;
 expression      ::=  INTEGER_LITERAL:n                          {: RESULT = new IntConst(n); :} 
                 |    REAL_LITERAL:n                             {: RESULT = new RealConst(n); :}
@@ -326,8 +326,8 @@ expression      ::=  INTEGER_LITERAL:n                          {: RESULT = new 
                 |    expression:e1 LEQ expression:e2            {: RESULT = new BinOpExp("leq",e1,e2); :}
                 |    expression:e1 NEQ expression:e2            {: RESULT = new BinOpExp("neq",e1,e2); :}
                 |    ID:nm actual_params:ap                     {: RESULT = new CallExp(nm,ap); :}
-                |    ID:nm record_inits:ri                      {: RESULT = new RecordExp(nm,ri); :} /*case class RecordExp ( name: String, arguments: List[(String,Expr)] ) extends Expr*/
-                |    ID:nm array_inits:ai                       {: RESULT = new ArrayExp(nm,ai); :} /*case class ArrayExp ( name: String, arguments: List[(Expr,Expr)] ) extends Expr*/
+                |    ID:nm record_inits:ri                      {: RESULT = new CallExp(nm,ri); :}
+                |    ID:nm array_inits:ai                       {: RESULT = new CallExp(nm,ai); :}
                 ;
 lvalue          ::=  ID:nm                                     {: RESULT = new Var(nm); :}
                 |    lvalue:l LSQBRA expression:e RSQBRA       {: RESULT = new ArrayDeref(l,e); :}
@@ -335,32 +335,31 @@ lvalue          ::=  ID:nm                                     {: RESULT = new V
                 ;
 actual_params   ::=  LPAREN expression:e actual_paramsRec:apl RPAREN {: RESULT = add(e,apl); :}
                 |    LPAREN expression:e RPAREN                      {: RESULT = add(e,nil); :}
-                |    LPAREN RPAREN                                   {: RESULT = add(null,nil); :}
+                |    LPAREN RPAREN                                   
                 ;
 actual_paramsRec::=  actual_paramsRec:apl COMMA expression:e    {: RESULT = append(apl,e); :}
                 |    COMMA expression:e                         {: RESULT = append(nil,e); :}
                 ;
-record_inits    ::=  LCUBRA ID:nm ASGN expression:e record_initsRec:ril RCUBRA {: RESULT = append(ril,add(nm,add(e,nil))); :}
+record_inits    ::=  LCUBRA ID:nm ASGN expression:e record_initsRec:ri RCUBRA
                 ;
-record_initsRec ::=  record_initsRec:ril SEMI ID:nm ASGN expression:e    {: RESULT = append(ril,append(add(nm,nil),e)); :}
-                |    SEMI ID:nm ASGN expression:e           {: RESULT = append(add(nm,nil),e); :}
+record_initsRec ::=  record_initsRec SEMI ID ASGN expression    
+                |    SEMI ID ASGN expression
                 ;
-array_inits     ::=  LCUBRA array_inits_type:ail RCUBRA     {: RESULT = append(ail,nil); :}
-                |    LCUBRA RCUBRA                          {: RESULT = add(null,nil); :}
+array_inits     ::=  LCUBRA array_inits_type RCUBRA
+                |    LCUBRA RCUBRA
                 ;
-array_inits_type::= array_init:ai array_initsRec:ail        {: RESULT = append(ai,ail); :}
-                |   array_init:ai                           {: RESULT = append(ai,nil); :}
+array_inits_type::= array_init array_initsRec
+                |   array_init
                 ;
-array_initsRec  ::=  array_initsRec:ail COMMA array_init:ai {: RESULT = append(ail,ai); :} 
-                |    COMMA array_init:ai                    {: RESULT = add(null,ai); :}
+array_initsRec  ::=  array_initsRec COMMA array_init   
+                |    COMMA array_init
                 ;
-array_init      ::= array_init_type:ait expression:e       {: RESULT = append(ait,e); :} 
-                |   expression:e                           {: RESULT = add(e,nil); :}
-                ;
-
-array_init_type ::= expression:e OF                        {: RESULT = add(e,nil); :}
+array_init      ::= expression OF expression
+                |   expression
                 ;
 /*
+array_init_type ::= expression OF
+                ;
 number          ::= INTEGER_LITERAL:n       {: RESULT = new IntConst(n); :} 
                 | REAL_LITERAL:n            {: RESULT = new RealConst(n); :}
                 ;

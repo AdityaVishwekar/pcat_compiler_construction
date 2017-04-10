@@ -95,11 +95,11 @@ non terminal Expr        expression;
 non terminal Stmt        statement;
 non terminal List<Stmt>  statementRec;
 non terminal             number;
-non terminal List<Expr>  array_init;
-non terminal List<Tuple2<Expr,Expr>>  array_inits;
-non terminal List<Expr>  array_initsRec;
-non terminal List<Tuple2<String,Expr>>  record_inits;
-non terminal List<Tuple2<String,Expr>>  record_initsRec;
+non terminal             array_init;
+non terminal List<Expr>  array_inits;
+non terminal             array_initsRec;
+non terminal List<Expr>  record_inits;
+non terminal             record_initsRec;
 non terminal List<Expr>  actual_params;
 non terminal List<Expr>  actual_paramsRec;
 non terminal Lvalue      lvalue;
@@ -132,8 +132,8 @@ non terminal List<Tuple2<List<String>,String>> procedure_decl_type;
 non terminal Stmt       statement_else_type;
 non terminal            statement_expression_type;
 non terminal            for_decl_type;
-non terminal List<Expr> array_inits_type;
-non terminal List<Expr> array_init_type;
+non terminal            array_inits_type;
+non terminal            array_init_type;
 
 precedence nonassoc ELSE;
 precedence nonassoc ELSIF;
@@ -326,8 +326,8 @@ expression      ::=  INTEGER_LITERAL:n                          {: RESULT = new 
                 |    expression:e1 LEQ expression:e2            {: RESULT = new BinOpExp("leq",e1,e2); :}
                 |    expression:e1 NEQ expression:e2            {: RESULT = new BinOpExp("neq",e1,e2); :}
                 |    ID:nm actual_params:ap                     {: RESULT = new CallExp(nm,ap); :}
-                |    ID:nm record_inits:ri                      {: RESULT = new RecordExp(nm,ri); :} /*case class RecordExp ( name: String, arguments: List[(String,Expr)] ) extends Expr*/
-                |    ID:nm array_inits:ai                       {: RESULT = new ArrayExp(nm,ai); :} /*case class ArrayExp ( name: String, arguments: List[(Expr,Expr)] ) extends Expr*/
+                |    ID:nm record_inits:ri                      {: RESULT = new CallExp(nm,ri); :}
+                |    ID:nm array_inits:ai                       {: RESULT = new CallExp(nm,ai); :}
                 ;
 lvalue          ::=  ID:nm                                     {: RESULT = new Var(nm); :}
                 |    lvalue:l LSQBRA expression:e RSQBRA       {: RESULT = new ArrayDeref(l,e); :}
@@ -335,32 +335,31 @@ lvalue          ::=  ID:nm                                     {: RESULT = new V
                 ;
 actual_params   ::=  LPAREN expression:e actual_paramsRec:apl RPAREN {: RESULT = add(e,apl); :}
                 |    LPAREN expression:e RPAREN                      {: RESULT = add(e,nil); :}
-                |    LPAREN RPAREN                                   {: RESULT = add(null,nil); :}
+                |    LPAREN RPAREN                                   
                 ;
 actual_paramsRec::=  actual_paramsRec:apl COMMA expression:e    {: RESULT = append(apl,e); :}
                 |    COMMA expression:e                         {: RESULT = append(nil,e); :}
                 ;
-record_inits    ::=  LCUBRA ID:nm ASGN expression:e record_initsRec:ril RCUBRA {: RESULT = append(ril,add(nm,add(e,nil))); :}
+record_inits    ::=  LCUBRA ID:nm ASGN expression:e record_initsRec:ri RCUBRA
                 ;
-record_initsRec ::=  record_initsRec:ril SEMI ID:nm ASGN expression:e    {: RESULT = append(ril,append(add(nm,nil),e)); :}
-                |    SEMI ID:nm ASGN expression:e           {: RESULT = append(add(nm,nil),e); :}
+record_initsRec ::=  record_initsRec SEMI ID ASGN expression    
+                |    SEMI ID ASGN expression
                 ;
-array_inits     ::=  LCUBRA array_inits_type:ail RCUBRA     {: RESULT = append(ail,nil); :}
-                |    LCUBRA RCUBRA                          {: RESULT = add(null,nil); :}
+array_inits     ::=  LCUBRA array_inits_type RCUBRA
+                |    LCUBRA RCUBRA
                 ;
-array_inits_type::= array_init:ai array_initsRec:ail        {: RESULT = append(ai,ail); :}
-                |   array_init:ai                           {: RESULT = append(ai,nil); :}
+array_inits_type::= array_init array_initsRec
+                |   array_init
                 ;
-array_initsRec  ::=  array_initsRec:ail COMMA array_init:ai {: RESULT = append(ail,ai); :} 
-                |    COMMA array_init:ai                    {: RESULT = add(null,ai); :}
+array_initsRec  ::=  array_initsRec COMMA array_init   
+                |    COMMA array_init
                 ;
-array_init      ::= array_init_type:ait expression:e       {: RESULT = append(ait,e); :} 
-                |   expression:e                           {: RESULT = add(e,nil); :}
-                ;
-
-array_init_type ::= expression:e OF                        {: RESULT = add(e,nil); :}
+array_init      ::= expression OF expression
+                |   expression
                 ;
 /*
+array_init_type ::= expression OF
+                ;
 number          ::= INTEGER_LITERAL:n       {: RESULT = new IntConst(n); :} 
                 | REAL_LITERAL:n            {: RESULT = new RealConst(n); :}
                 ;

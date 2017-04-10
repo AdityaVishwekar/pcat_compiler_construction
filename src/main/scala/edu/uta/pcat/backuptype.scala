@@ -99,15 +99,14 @@ class TypeCheck extends TypeChecker {
         //if (!typeEquivalence(ltp,rtp))
           //throw new Error("Incompatible types in binary operation: "+e+" Hello "+ltp+" Hello "+rtp)
         if (op.equals("and") || op.equals("or"))
-              boolType
-              // if (typeEquivalence(ltp,boolType))
-               //  ltp
-              // else 
-                //  throw new Error("AND/OR operation can only be applied to booleans: "+e)
+               if (typeEquivalence(ltp,boolType))
+                 ltp
+               else 
+                  throw new Error("AND/OR operation can only be applied to booleans: "+e)
         else if (op.equals("eq") || op.equals("neq"))
                       boolType
-               // else if (!typeEquivalence(ltp,intType) && !typeEquivalence(ltp,floatType))
-               //        throw new Error("Binary arithmetic operations can only be applied to integer or real numbers: "+e)
+               else if (!typeEquivalence(ltp,intType) && !typeEquivalence(ltp,floatType))
+                      throw new Error("Binary arithmetic operations can only be applied to integer or real numbers: "+e)
         else if (op.equals("gt") || op.equals("lt") || op.equals("geq") || op.equals("leq"))
                       boolType
         /* My code*/
@@ -236,7 +235,7 @@ class TypeCheck extends TypeChecker {
 
       case RecordDeref(l,nm) => {
           val ltp = typecheck(l)
-          val nmt = NamedType("STRING")
+          // val nmt = NamedType(nm)
           // if(typeEquivalence(nmt,intType))
           //   intType
           // else if(typeEquivalence(nmt,stringType)){
@@ -259,10 +258,10 @@ class TypeCheck extends TypeChecker {
   def typecheck ( e: Stmt ) {
     trace(e,
           e match {
-      case AssignSt(d,s)=> {
-        typecheck(d)
-        typecheck(s)
-      }
+      case AssignSt(d,s)
+        => if (!typeEquivalence(typecheck(d),typecheck(s)))
+               throw new Error("Incompatible types in assignment: "+e)
+
       /* PUT YOUR CODE HERE */
       case WriteSt(s) =>
         s.foreach(typecheck(_))
@@ -294,9 +293,6 @@ class TypeCheck extends TypeChecker {
       }
       case ReturnValueSt(e) => {
         typecheck(e)
-      }
-      case ReturnSt() => {
-        e
       }
       case _ => throw new Error("Wrong statement: "+e)
     } )
